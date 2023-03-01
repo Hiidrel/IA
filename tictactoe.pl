@@ -1,4 +1,4 @@
-/*********************************
+	/*********************************
 	DESCRIPTION DU JEU DU TIC-TAC-TOE
 	*********************************/
 
@@ -22,55 +22,42 @@
 	par un nouvel identificateur).
 	*/
 
+%*******************************************************************************
+	% Situation initiale, la matrice est vide
 situation_initiale([ [_,_,_],
                      [_,_,_],
                      [_,_,_] ]).
 
+	% Une situation gagnante pour o
 situation([ [o,_,a],
 								[o,b,_],
 								[o,_,_] ]).
 
 	% Convention (arbitraire) : c'est x qui commence
-
 joueur_initial(x).
 
-
 	% Definition de la relation adversaire/2
-
 adversaire(x,o).
 adversaire(o,x).
 
-
-	/****************************************************
-	 DEFINIR ICI a l'aide du predicat ground/1 comment
-	 reconnaitre une situation terminale dans laquelle il
-	 n'y a aucun emplacement libre : aucun joueur ne peut
-	 continuer a jouer (quel qu'il soit).
-	 ****************************************************/
-
+	% Situation terminale, i.e sans case libre
 situation_terminale(_Joueur, Situation) :-
     ground(Situation).
 
-	/***************************
-	DEFINITIONS D'UN ALIGNEMENT
-	***************************/
+%*******************************************************************************
+	/********************************************************
+	DEFINITIONS D'UN ALIGNEMENT (dans une matrice carrée NxN)
+	********************************************************/
 
 alignement(L, Matrix) :- ligne(L,Matrix).
 alignement(C, Matrix) :- colonne(C,Matrix).
 alignement(D, Matrix) :- diagonale(D,Matrix).
-
-	/********************************************
-	 DEFINIR ICI chaque type d'alignement maximal 
- 	 existant dans une matrice carree NxN.
-	 ********************************************/
 	
-	/* alignement de lignes */
-
+	% Alignement de lignes
 ligne(L, M) :-
 	nth1(_E,M,L).
 
-	/* alignement de colonnes */
-
+	% Alignement de colonnes
 transpose([[]|_], []).
 transpose(Matrix, [Row|Rows]) :- transpose_1st_col(Matrix, Row, RestMatrix),
                                  transpose(RestMatrix, Rows).
@@ -81,8 +68,7 @@ colonne(C,M) :-
 	transpose(M,Mt),
 	ligne(C,Mt).
 
-	/* alignement de diagonales */
-		
+	% Alignement de diagonales
 diagonale(D, M) :- 
 	premiere_diag(1,D,M).
 
@@ -105,59 +91,75 @@ seconde_diag(K,[Ligne|M],[E|D]) :-
 	K1 is K-1,
 	seconde_diag(K1,M,D).
 
-
+%*******************************************************************************
 	/*****************************
-	 DEFINITION D'UN ALIGNEMENT 
-	 POSSIBLE POUR UN JOUEUR DONNE
-	 *****************************/
+	DEFINITION D'UN ALIGNEMENT 
+	POSSIBLE POUR UN JOUEUR DONNE
+	*****************************/
+
+	/*
+	possible(+Ali,+J)
+
+	Renvoie true si l'alignement Ali est possible pour J (cases libres ou du type de J)
+	*/
 
 possible([X|L],J) :- unifiable(X,J), possible(L,J).
 possible([],_).
 
-	/* Vérification du caractère unifiable des emplacements de la liste */
-
+	% Vérification du caractère unifiable des emplacements de la liste
 unifiable(X,_) :- var(X).
 unifiable(X,J) :- ground(X), X=J.
-	
-	/**********************************
-	 DEFINITION D'UN ALIGNEMENT GAGNANT
-	 OU PERDANT POUR UN JOUEUR DONNE J
-	 **********************************/
-	/*
-	Un alignement gagnant pour J est un alignement
-possible pour J qui n'a aucun element encore libre.
-	*/
-		
-	/* Un alignement perdant pour J est un alignement gagnant pour son adversaire. */
 
+%*******************************************************************************
+	/**********************************
+	DEFINITION D'UN ALIGNEMENT GAGNANT
+	OU PERDANT POUR UN JOUEUR DONNE J
+	**********************************/
+
+	/*
+	alignement_gagnant(+Ali, +J)
+	alignement_perdant(+Ali, +J)
+	*/
+
+	% Un alignement gagnant pour J est un alignement possible pour J qui n'a aucun element encore libre.
 alignement_gagnant(Ali, J) :- ground(Ali), possible(Ali,J).
 
+	% Un alignement perdant pour J est un alignement gagnant pour son adversaire. 
 alignement_perdant(Ali, J) :- adversaire(J,J2), alignement_gagnant(Ali,J2).
 
-	/* ****************************
+%*******************************************************************************
+	/******************************
 	DEFINITION D'UN ETAT SUCCESSEUR
-	****************************** */
+	******************************/
 
-	/* 
-	Il faut definir quelle operation subit la matrice
-	M representant l'Etat courant
-	lorsqu'un joueur J joue en coordonnees [L,C]
-	*/	
+	/*
+	successeur(+J,+Etat,+[L,C])
 
+	Écrit dans Etat la valeur associée à J à l'élément C de la ligne L
+	*/
+
+	% Définition de l'état suivant un coup de J en [L,C]
 successeur(J, Etat,[L,C]) :- nth1(L,Etat,Lig), nth1(C,Lig,J).
 
+%*******************************************************************************
 	/**************************************
-   	 EVALUATION HEURISTIQUE D'UNE SITUATION
-  	 **************************************/
+   	EVALUATION HEURISTIQUE D'UNE SITUATION
+  	***************************************/
+	
+	/*
+	heuristique(+J, +Situation, ?H)
 
-	/* 1/ l'heuristique est +infini si la situation J est gagnante pour J */
+	Renvoie l'heuristique pour J pour la Situation
+	*/
+
+	/* 1 - l'heuristique est +infini si la situation J est gagnante pour J */
 
 heuristique(J,Situation,H) :-		% cas 1
    H = 10000,				% grand nombre approximant +infini
    alignement(Alig,Situation),
    alignement_gagnant(Alig,J), !.
 	
-	/* 2/ l'heuristique est -infini si la situation J est perdante pour J */
+	/* 2 - l'heuristique est -infini si la situation J est perdante pour J */
 
 heuristique(J,Situation,H) :-		% cas 2
    H = -10000,				% grand nombre approximant -infini
@@ -165,11 +167,11 @@ heuristique(J,Situation,H) :-		% cas 2
    alignement_perdant(Alig,J), !.	
 
 
-	/* 3/ sinon, on fait la difference entre :
+	/* 3 - sinon, on fait la difference entre :
 	   le nombre d'alignements possibles pour J
 	   -
  	   le nombre d'alignements possibles pour l'adversaire de J
-	On ne vient ici que si les cut precedents n'ont pas fonctionne, c-a-d si Situation n'est ni perdante ni gagnante. */
+	On ne vient ici que si les cut precedents n'ont pas fonctionne, c-a-d si la Situation n'est ni perdante ni gagnante. */
 
 heuristique(J,Situation,H) :-
     % coups possibles pour J
