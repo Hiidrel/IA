@@ -69,9 +69,15 @@ initial_state([ [a, b, c],
 %******************
 % format :  final_state(+State) ou State est une matrice (liste de listes)
 
+% final_state la situation finale F pour le Taquin 3x3
 final_state([[a, b,  c],
             [h,vide, d],
             [g, f,  e]]).
+% final_state_4 la situation finale F pour le Taquin 4x4
+final_state_4([[1, 2, 3, 4],
+            [5, 6, 7, 8],
+            [9, 10, 11, 12],
+            [13, 14, 15, vide]]).
 
             
 %********************
@@ -84,6 +90,16 @@ write_state([Line|Rest]) :-
 writeln(Line),
 write_state(Rest).
 
+% question 1.2.c, vérification de la position d'un élément P dans U0 par rapport à F
+is_in_place(P) :-
+	initial_state(U0),
+	final_state(F),
+	% position de P dans Ini = [I1,I2]
+	nth1(I1,U0,X),
+	nth1(I2,X,P),
+	% vérification de la position de P = [I1,I2]
+	nth1(I1,F,Ligne),
+	nth1(I2,Ligne,P).
 
 %**********************************************
 % REGLES DE DEPLACEMENT (up, down, left, right)             
@@ -176,8 +192,8 @@ coordonnees([L,C], Mat, Elt) :-
 %*************
 
 heuristique(U,H) :-
-heuristique1(U, H).  % au debut on utilise l heuristique 1 
-%   heuristique2(U, H).  % ensuite utilisez plutot l heuristique 2  
+% heuristique1a(U, H).  % au debut on utilise l heuristique 1 
+heuristique2(U, H).  % ensuite utilisez plutot l heuristique 2  
 
 
 %****************
@@ -194,35 +210,41 @@ heuristique1(U, H).  % au debut on utilise l heuristique 1
 % On peut également comparer les pieces qui se trouvent aux memes coordonnees dans U et dans H et voir si il sagit de la
 % meme piece.
 
+% malplace(+P,+U,+F)
 malplace(P,U,F) :-
 coordonnees([L,C],U,P), not(coordonnees([L,C],F,P)).
 
 % Definir enfin l heuristique qui détermine toutes les pièces mal placées (voir prédicat findall) 
 % et les compte (voir prédicat length)
 
-heuristique1(U, H) :- 
+% version par recherche de la liste des pièces mal placées (heuristique 1a)
+% heuristique1a(+U,?H).
+heuristique1a(U, H) :- 
     final_state(Fin), findall(X, (malplace(X, U, Fin), X\= vide), L), length(L,H).
 
 
-% version récursive
-heuristique1Rec(M1,M2, X):-
-    heuristique1Rec(M1, M2, 0, X).
-heuristique1Rec([],[],Acu, Acu).
-heuristique1Rec([L1|R1],[L2|R2], Acu, X):-
-    h1RecLigne(L1,L2,X2),
-    Acu2 is Acu + X2,
-    heuristique1Rec(R1,R2,Acu2,X).
-h1RecLigne([],[],0).
-h1RecLigne([E1|L1],[E1|L2], X) :-
-    h1RecLigne(L1,L2,X).
-h1RecLigne([E1|L1],[E2|L2], X) :-
-    h1RecLigne(L1,L2,X2),
-    E2\=E1,
-    E1\= vide,
-    X is X2+1.
-h1RecLigne([vide|L1],[E2|L2], X) :-
-    h1RecLigne(L1,L2,X),
-    E2\= vide.
+% version récursive (heuristique 1b)
+% heursitique1b(+U,?H)
+heuristique1b(U,H):-
+    final_state(F),
+    heuristique1b(U,F,0,H).
+heuristique1b([],[],Acu,Acu). % cas d'arrêt, matrices vides, l'heuristique H=Acu
+heuristique1b([LU|RU],[LF|RF],Acu,H):-
+    h1b_Ligne(LU,LF,H2),
+    Acu2 is Acu + H2,
+    heuristique1b(RU,RF,Acu2,H).
+% h1b_Ligne calcule l'heuristique H pour une ligne donnée
+h1b_Ligne([],[],0). % cas d'arrêt, H=0 pour une ligne vide
+h1b_Ligne([E|LU],[E|LF],H) :-
+    h1b_Ligne(LU,LF,H).
+h1b_Ligne([EU|LU],[EF|LF],H) :-
+    h1b_Ligne(LU,LF,H2),
+    EF\=EU,
+    EU\= vide,
+    H is H2+1.
+h1b_Ligne([vide|LU],[EF|LF],H) :- % gestion du cas 'vide' (on le saute)
+    h1b_Ligne(LU,LF,H),
+    EF\= vide.
 
 %****************
 %HEURISTIQUE no 2
@@ -231,20 +253,21 @@ h1RecLigne([vide|L1],[E2|L2], X) :-
 % Somme des distances de Manhattan à parcourir par chaque piece
 % entre sa position courante et sa positon dans l etat final
 
-
+% dm(+Elt,+U,?D).
 dm(Elt,U,F,D):-
-      coordonnees([L,C],U,Elt),
-      coordonnees([L1,C1],F,Elt),
-      D is (abs(L-L1)+abs(C-C1)).
+    coordonnees([L,C],U,Elt),
+    coordonnees([L1,C1],F,Elt),
+    D is (abs(L-L1)+abs(C-C1)).
 
-    sum([],0):-!.
+% sum(+Q,?Somme).
+sum([],0):-!.
+sum([T|Q],Somme) :-
+    sum(Q,S),
+    Somme is T + S.
 
-    sum([T|Q],Somme) :-
-      sum(Q,S),
-      Somme is T + S.
-
-   heuristique2(U, H) :-
-      final_state(Fin),
-      findall(X,(malplace(X,U,Fin),X \= vide),L),
-      findall(D,(member(X,L),dm(X,U,Fin,D)),L2),
-      sum(L2,H).
+% heuristique2(+U,?H).
+heuristique2(U, H) :-
+    final_state(F),
+    findall(X,(malplace(X,U,F),X \= vide),L),
+    findall(D,(member(X,L),dm(X,U,F,D)),L2),
+    sum(L2,H).

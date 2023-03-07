@@ -46,7 +46,8 @@ Predicat principal de l'algorithme :
 :- ['taquin.pl'].    % predicats definissant le systeme a etudier
 
 %*******************************************************************************
-    % expand pour trouver tous les successeurs et calculer les coûts associés
+    % expand pour trouver tous les successeurs et calculer les coûts associés.
+    % expand([_,_,+G],?Lsuc).
 expand([[_Fu,_Hu,Gu],S],Lsuc):-
     G is Gu+1,
     findall((S2,A,[F,H,G]), (rule(A, 1, S, S2), heuristique2(S2,H), F is G+H), Lsuc).
@@ -64,20 +65,18 @@ comp_F(Old_F,Pf,Pu,_S,[F,_H,_G],_Pere,_A,Pf,Pu):- % cas F >= Old_F, on ne fait r
     F >= Old_F.
 
 %*******************************************************************************
-    % loop_successors
-    % cas d'arrêt ou la liste es successeurs est vide
+    % loop_successors(+Suc,+Pf,+Pu,+Q,+Pere,?Pf_out,?Pu_out).
+    % cas d'arrêt ou la liste des successeurs est vide
 loop_successors([], Pf, Pu, _Q, _Pere, Pf, Pu).
 
     % S est connu, on l'ignore et on continue
 loop_successors([(S,_A,[_F,_H,_G])|Suc],Pf,Pu,Q,Pere, Pf_out, Pu_out):-
     belongs([S,_Val,_Pere,_Coup],Q),
-    !, writeln("a"),
     loop_successors(Suc,Pf,Pu,Q,Pere, Pf_out, Pu_out).
 
-    % S est connu dans Pu, on le met à jour (si le cout trouvé est inférieur au précédant)
+    % S est connu dans Pu, on le met à jour (si le cout trouvé est inférieur au précédent)
 loop_successors([(S,A,[F,H,G])|Suc],Pf,Pu,Q,Pere, Pf_out, Pu_out):-
     belongs([S,[Old_F,_H,_G],_Pere,_A],Pu),
-    !, writeln("b"),
     comp_F(Old_F,Pf,Pu,S,[F,H,G],Pere,A,Pf_new,Pu_new),
     loop_successors(Suc,Pf_new,Pu_new,Q,Pere, Pf_out, Pu_out).
 
@@ -88,24 +87,22 @@ loop_successors([(S,A,[F,H,G])|Suc],Pf,Pu,Q,Pere, Pf_out, Pu_out):-
     loop_successors(Suc,Pf_new,Pu_new,Q,Pere, Pf_out, Pu_out).
 
 %*******************************************************************************
-    % affiche_solution
-affiche_solution(Q,Sol):-
-    put_flat(Q).
-
+    % affiche_solution(+Q,+Sol).
+affiche_solution(Sol):-
+    put_flat(Sol).
 
 %*******************************************************************************
-    % aetoile
-
+    % aetoile(+Pf,+Pu,+Q).
     % cas trivial, Pf et Pu sont vides
 aetoile([],[],_):- print("PAS DE SOLUTION : L ETAT FINAL N EST PAS ATTEIGNABLE !").
     
     % cas trivial, solution trouvée
-aetoile(Pf,_Pu,Qs):- 
+aetoile(Pf,_Pu,Q):- 
 	final_state(Fin), 
 	suppress_min([[F,H,G],Fin], Pf, _Pf2),
     !, writeln(Pu),
     suppress([Fin,[F,H,G],Pere,A], Pu, Pu2),
-    insert([Fin,G,Pere,A], Qs,Q_new),
+    insert([Fin,G,Pere,A], Q,Q_new),
     !, writeln("end"),
     !, put_flat(Q_new),
     !, writeln(Sol),
@@ -140,4 +137,5 @@ main :-
 	empty(Q),
 	insert([[F0,H0,G0],Ini],Pf,Pfi),
 	insert([Ini,[F0,H0,G0], nil, nil],Pu,Pui),
-    aetoile(Pfi, Pui, Q).
+    aetoile(Pfi, Pui, Q),
+    affiche_solution(Q).
