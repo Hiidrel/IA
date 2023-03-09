@@ -50,7 +50,8 @@ Predicat principal de l'algorithme :
     % expand([_,_,+G],?Lsuc).
 expand([[_Fu,_Hu,Gu],S],Lsuc):-
     G is Gu+1,
-    findall((S2,A,[F,H,G]), (rule(A, 1, S, S2), heuristique2(S2,H), F is G+H), Lsuc).
+    findall((S2,A,[F,H,G]), (rule(A, 1, S, S2), heuristique2(S2,H), F is G+H), Lsuc),
+    writeln(Lsuc), nl.
 
 %*******************************************************************************
     % comp_F pour mettre à jour (ou non) Pu et Pf si l'état successeur y est déjà (cf. loop_successors)
@@ -87,55 +88,51 @@ loop_successors([(S,A,[F,H,G])|Suc],Pf,Pu,Q,Pere, Pf_out, Pu_out):-
     loop_successors(Suc,Pf_new,Pu_new,Q,Pere, Pf_out, Pu_out).
 
 %*******************************************************************************
-    % affiche_solution(+Q,+Sol).
-affiche_solution(Sol):-
-    put_flat(Sol).
+    % affiche_solution(+Sol,+Q,+Coups).
+
+affiche_solution(Sol) :-
+    put_flat(Sol),nl.
 
 %*******************************************************************************
     % aetoile(+Pf,+Pu,+Q).
     % cas trivial, Pf et Pu sont vides
 aetoile([],[],_):- print("PAS DE SOLUTION : L ETAT FINAL N EST PAS ATTEIGNABLE !").
     
-    % cas trivial, solution trouvée
-aetoile(Pf,_Pu,Q):- 
+    % cas trivial, solution trouvée <=> min de Pf = situation terminale
+aetoile(Pf,Pu,Q):- 
 	final_state(Fin), 
 	suppress_min([[F,H,G],Fin], Pf, _Pf2),
-    !, writeln(Pu),
-    suppress([Fin,[F,H,G],Pere,A], Pu, Pu2),
-    insert([Fin,G,Pere,A], Q,Q_new),
-    !, writeln("end"),
-    !, put_flat(Q_new),
-    !, writeln(Sol),
-	affiche_solution(Q_new,Sol).
+    suppress([Fin,[F,H,G],Pere,A], Pu, _Pu2), 
+    insert([[[F,H,G],Fin],G,Pere,A], Q,Q_new),
+    put_flat(Q_new),nl,
+	affiche_solution(Q_new).
 
     % cas général
 aetoile(Pf,Pu,Qs):- 
-	suppress_min(U, Pf, Pf2), % M état de cout F minimal
+	suppress_min(U, Pf, Pf2), % M état de coût F minimal
+    writeln(U),nl,
     U=[[F,H,G],S],
-	suppress([S,[F,H,G],Pere,A], Pu, Pu2), % on enlève aussi M dans Pu (symétrie)
+	suppress([S,[F,H,G],Pere,A], Pu, Pu2), % on enlève aussi M dans Pu (synchronisation)
     expand(U,Lsuc), % on trouve tous les successeurs
     loop_successors(Lsuc, Pf2, Pu2, Qs, U, Pf_out, Pu_out), % on traite chaque successeur
-    !, put_flat(Pf_out), nl, nl,
-    !, put_flat(Pu_out), nl,
     insert([U,G,Pere,A], Qs,Q_new), % on ajoute l'état traité dans Q
-    !, writeln("itération finie, Q :"),
-    !, put_flat(Q_new), nl,
     aetoile(Pf_out, Pu_out, Q_new). % on fait la récursion
 
 %*******************************************************************************
     % main program
     % initialisations Pf, Pu et Q 
-	% lancement de Aetoile
-    % programme principal qui init la situation et appelle A*
+	% lancement de A*
 main :-
-	initial_state(Ini),
+	final_state(Ini),
 	heuristique2(Ini,H0),
-	G0 is 0,
+	G0 is 0, % on n'a rien fait pour l'instant
 	F0 is G0 + H0,
 	empty(Pf),
 	empty(Pu),
 	empty(Q),
 	insert([[F0,H0,G0],Ini],Pf,Pfi),
 	insert([Ini,[F0,H0,G0], nil, nil],Pu,Pui),
+    statistics(walltime, [_TimeSinceStart | [_TimeSinceLastCall]]),
     aetoile(Pfi, Pui, Q),
-    affiche_solution(Q).
+    statistics(walltime, [_NewTimeSinceStart | [ExecutionTime]]),
+    write('Execution took '), write(ExecutionTime), write(' ms.'), nl.
